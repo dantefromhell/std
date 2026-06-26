@@ -7,9 +7,31 @@
   inherit (nixpkgs.lib) splitString drop pipe optionalAttrs;
   inherit (nixpkgs.stdenv) isLinux;
   inherit (std) dmerge;
+  # Normalize the proviso path for snapshot stability. Two cases:
+  # - shipped file (e.g. `/nix/store/<hash>-incl/std/fwlib/blockTypes/
+  #   containers-proviso.sh`): keep the in-tree path
+  #   `std/fwlib/blockTypes/containers-proviso.sh` (drop the nix
+  #   store + `-incl` prefix, 4 components).
+  # - writeShellScript output (`/nix/store/<hash>-containers-proviso`):
+  #   nothing left after drop 4, fall back to the basename with the
+  #   leading nix-store hash stripped → `containers-proviso`.
   trimProvisoPath = a:
     if a ? proviso
-    then a // {proviso = concatStringsSep "/" (drop 4 (splitString "/" a.proviso));}
+    then
+      a
+      // {
+        proviso = let
+          parts = drop 4 (splitString "/" a.proviso);
+          base = baseNameOf a.proviso;
+          m = builtins.match "[a-z0-9]{32}-(.*)" base;
+        in
+          if parts == []
+          then
+            if m == null
+            then base
+            else builtins.head m
+          else concatStringsSep "/" parts;
+      }
     else a;
   evalCommand = a:
     if a ? command

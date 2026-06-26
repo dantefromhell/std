@@ -61,7 +61,7 @@
           image = "repo:tag";
         };
         name = "publish";
-        proviso = "std/fwlib/blockTypes/containers-proviso.sh";
+        proviso = "containers-proviso";
       }
       {
         command = <derivation load>;
