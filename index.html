@@ -292,9 +292,21 @@ It further dogfoods itself and implements utilities in its own <a href="https://
 <pre><code class="language-nix">inputs: let
   inherit (inputs) incl std;
   inherit (inputs.paisano) pick harvest;
+  # nixpkgs-unstable dropped x86_64-darwin from `lib.systems.doubles`. Paisano
+  # validates a grow call's `systems` argument against a yants enum built from
+  # `lib.systems.doubles.all` of the followed nixpkgs, and its built-in default
+  # still lists x86_64-darwin, so any grow call that omits `systems` fails to
+  # evaluate on the newer nixpkgs. We take paisano's historical default list and
+  # keep only the systems the followed nixpkgs actually supports, so the list
+  # adapts automatically to whatever nixpkgs is in use.
+  supportedSystems =
+    builtins.filter
+    (s: builtins.elem s inputs.nixpkgs.lib.systems.doubles.all)
+    ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
 in
   std.growOn {
     inherit inputs;
+    systems = supportedSystems;
     cellsFrom = incl ./src ["local" "tests"];
     nixpkgsConfig = {allowUnfree = true;};
     cellBlocks = with std.blockTypes; [
@@ -312,6 +324,7 @@ in
   }
   (std.grow {
     inherit inputs;
+    systems = supportedSystems;
     cellsFrom = incl ./src ["std" "lib" "data"];
     cellBlocks = with std.blockTypes; [
       ## For downstream use
