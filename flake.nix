@@ -62,6 +62,17 @@
   };
 
   outputs = inputs: let
+    # nixpkgs-unstable dropped x86_64-darwin from `lib.systems.doubles`. Paisano
+    # validates a grow call's `systems` argument against a yants enum built from
+    # `lib.systems.doubles.all` of the followed nixpkgs, and its built-in default
+    # still lists x86_64-darwin, so any grow call that omits `systems` fails to
+    # evaluate on the newer nixpkgs. We take paisano's historical default list
+    # and keep only the systems the followed nixpkgs actually supports, so the
+    # list adapts automatically to whatever nixpkgs is in use.
+    supportedSystems =
+      builtins.filter
+      (s: builtins.elem s inputs.nixpkgs.lib.systems.doubles.all)
+      ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
     # bootstrap std
     fwlib = import ./src/std/fwlib.nix {
       inputs = inputs // {nixpkgs = inputs.nixpkgs.legacyPackages;};
@@ -71,6 +82,7 @@
     # to enable input overloading for blocktypes
     fwlib' = inputs.paisano.pick (fwlib.grow {
       inherit inputs;
+      systems = supportedSystems;
       cellsFrom = inputs.incl ./src ["std"];
       cellBlocks = [(fwlib.blockTypes.functions "fwlib")];
     }) ["std" "fwlib"];
