@@ -73,6 +73,8 @@
       builtins.filter
       (s: builtins.elem s inputs.nixpkgs.lib.systems.doubles.all)
       ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
+    # supported lix/ nix versions.
+    supportedNixVersions = ((builtins.compareVersions builtins.nixVersion "2.18.0-lix") >= 0) || ((builtins.compareVersions builtins.nixVersion "2.23") >= 0);
     # bootstrap std
     fwlib = import ./src/std/fwlib.nix {
       inputs = inputs // {nixpkgs = inputs.nixpkgs.legacyPackages;};
@@ -94,7 +96,7 @@
       inherit (fwlib') blockTypes actions dataWith flakeModule grow growOn findTargets;
     };
   in
-    assert inputs.nixpkgs.lib.assertMsg (((builtins.compareVersions builtins.nixVersion "2.18.0-lix") >= 0) || ((builtins.compareVersions builtins.nixVersion "2.23") >= 0)) "The truth is: you'll need a newer version of nix (min. v2.23) or lix (min. 2.18) to use Standard.";
+    assert inputs.nixpkgs.lib.assertMsg supportedNixVersions "The truth is: you'll need a newer version of nix (min. v2.23) or lix (min. 2.18) to use Standard.";
       (import ./dogfood.nix (inputs
         // {
           std = std // {inherit (inputs.self) narHash;};
